@@ -1,0 +1,5 @@
+import { Network } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+
+export default function GraphPage() { return <><PageHeader eyebrow="Connections" title="Knowledge Graph" description="A focused map of meaningful relationships."/><div className="grid h-[calc(100vh-130px)] place-items-center p-8"><div className="relative grid h-[460px] w-full max-w-4xl place-items-center overflow-hidden rounded-3xl border hairline bg-[radial-gradient(circle_at_center,rgba(104,232,255,.1),transparent_45%)]"><div className="absolute inset-0 opacity-30" style={{backgroundImage:"linear-gradient(rgba(104,232,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(104,232,255,.06) 1px,transparent 1px)",backgroundSize:"32px 32px"}}/><div className="z-10 text-center"><div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-cyan/30 bg-cyan/10 text-cyan shadow-glow"><Network/></div><h2 className="mt-5 text-lg">Relationships appear as knowledge grows</h2><p className="mt-2 max-w-sm text-sm text-muted">The schema already records nodes and typed edges. Interactive editing is a post-MVP module.</p></div></div></div></> }
+

@@ -1,0 +1,1 @@
+{"main-capability":{"identifier":"main-capability","description":"Desktop capabilities for Second Brain","local":true,"windows":["main","quick","capture"],"permissions":["core:default","global-shortcut:allow-is-registered","global-shortcut:allow-register","global-shortcut:allow-unregister","autostart:allow-enable","autostart:allow-disable","autostart:allow-is-enabled"]}}

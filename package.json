@@ -1,0 +1,22 @@
+{
+  "name": "second-brain-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:backend\" \"npm:dev:desktop\"",
+    "dev:backend": "python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8765 --reload",
+    "dev:desktop": "tauri dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
+    "build:desktop": "npm run build:backend && npm run tauri:icon && tauri build",
+    "build": "powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1",
+    "tauri:icon": "tauri icon assets/icon.svg",
+    "test": "python -m pytest backend/tests -q -p no:cacheprovider && npm --prefix frontend run typecheck",
+    "lint": "npm --prefix frontend run lint",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4",
+    "concurrently": "^9.2.1"
+  }
+}

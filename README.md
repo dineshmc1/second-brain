@@ -45,7 +45,7 @@ Follow [`instruction.md`](instruction.md). The installer is emitted beneath:
 src-tauri\target\release\bundle\nsis\Second Brain_0.1.0_x64-setup.exe
 ```
 
-Installed users do not need Python, Node.js, Rust, npm, or a terminal.
+Installed users do not need Python, Node.js, Rust, npm, or a terminal. This is a Tauri desktop app, so use the included GitHub Actions workflow or a local Windows build—not Vercel—to produce the installer.
 
 ## Privacy
 
@@ -53,7 +53,7 @@ Documents, audio, database records, keyword indexes, and embeddings stay local. 
 
 ## Troubleshooting
 
-- **Backend offline:** verify port 8765 is free and inspect `%LOCALAPPDATA%\Second Brain\second-brain.log`.
+- **Backend offline:** verify port 8765 is free and inspect `%LOCALAPPDATA%\Second Brain\Second Brain\second-brain.log`.
 - **Scanned PDF has no text:** install Tesseract OCR or upload screenshots. PDF OCR is optional.
 - **First embedding is slow:** the full build initializes local BGE on first indexing; if unavailable, deterministic local embeddings are used.
 - **Microphone fails:** allow microphone access in Windows Privacy settings and use the full sidecar build.

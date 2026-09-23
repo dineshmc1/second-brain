@@ -2,6 +2,17 @@
 
 This is the exact clean-machine procedure. Steps 1–7 are for the developer/build PC only. The person installing `SecondBrain-Setup.exe` does **not** need Python, Node.js, Rust, npm, or a terminal.
 
+## Choose the correct deployment target
+
+This repository is a Windows desktop application, not a Vercel web application. Do **not** connect the whole repository to Vercel. The browser UI depends on a local Tauri host, a packaged Python sidecar on `127.0.0.1`, Windows Credential Manager, and a local SQLite database. A standalone Vercel deployment would only publish an incomplete UI.
+
+Use one of these supported distribution paths:
+
+- Build `SecondBrain-Setup.exe` locally by following steps 1–9 below.
+- Push the code to GitHub and use the included GitHub Actions workflow, as described under **Build and download through GitHub**.
+
+No build-time API key or cloud database is required. Each installed user enters their own OpenRouter key inside the desktop app.
+
 ## 1. Use a supported Windows build machine
 
 Use 64-bit Windows 10 (version 1803 or later) or Windows 11. Sign in as a user who may install developer tools. Keep at least 15 GB free because Python voice/embedding packages and the Rust build cache are large.
@@ -118,10 +129,10 @@ The distributable file is:
 D:\Dinesh\Second brain\release\SecondBrain-Setup.exe
 ```
 
-The installer produced and verified on 23 September 2026 is 79,733,461 bytes with SHA-256:
+The installer produced and verified on 23 September 2026 is 79,731,004 bytes with SHA-256:
 
 ```text
-5D41BE6DA4EF87AB5F5B764983B5A0B78732B7DB300BE2CCC3E8A6AC0F70FFB7
+889D1B4906220056451E8E51948DC0F05829DDC2641EF8A59FA26BBFA58FFFCD
 ```
 
 Rebuilding later will produce a different hash. Always use the hash printed by `npm run build` for that build.
@@ -151,10 +162,12 @@ If no key is entered, the app remains useful in local/offline mode. OpenRouter u
 Application data is stored in:
 
 ```text
-%LOCALAPPDATA%\Second Brain\
+%LOCALAPPDATA%\Second Brain\Second Brain\
 ```
 
-The log is `%LOCALAPPDATA%\Second Brain\second-brain.log`. Uploaded originals are under `%LOCALAPPDATA%\Second Brain\uploads\`.
+The SQLite database is `%LOCALAPPDATA%\Second Brain\Second Brain\second_brain.sqlite3`. The log is in the same directory as `second-brain.log`, and uploaded originals are under its `uploads\` folder.
+
+You do not need Supabase, PostgreSQL, Neon, Vercel Storage, or any other hosted database. Every Windows user gets a private local database. Use **Settings → Export Second Brain** to make a portable backup before moving computers or uninstalling.
 
 ## 11. Run the acceptance checks
 
@@ -178,6 +191,62 @@ On the destination PC:
 2. Finish the current-user installation.
 3. Open Second Brain from the Start Menu or desktop shortcut.
 4. Enter an OpenRouter API key in Settings only if cloud-generated answers are wanted.
+
+## Build and download through GitHub
+
+The repository includes `.github/workflows/windows-installer.yml`. It builds on a GitHub-hosted Windows runner, so your own PC does not need the build toolchain.
+
+### Upload the source
+
+Create an empty GitHub repository. In PowerShell at this project's root, run:
+
+```powershell
+git add .
+git commit -m "Build Second Brain desktop app"
+git branch -M main
+git remote add origin https://github.com/YOUR-NAME/YOUR-REPOSITORY.git
+git push -u origin main
+```
+
+Do not commit `.env`, an OpenRouter key, the local database, or user uploads. The included `.gitignore` already excludes them. Before pushing, confirm `git status` does not list `.env`.
+
+### Make a test installer without publishing a release
+
+1. Open the GitHub repository.
+2. Select **Actions → Build Windows installer**.
+3. Click **Run workflow**, choose `main`, and confirm.
+4. Wait for the green check mark. The full build can take 15–40 minutes.
+5. Open the completed workflow run.
+6. Under **Artifacts**, download `SecondBrain-Windows-Installer`.
+7. Unzip it and run the `.exe` inside.
+
+GitHub workflow artifacts are ZIP downloads and are intended for testing. For a permanent public download, publish a release.
+
+### Publish a permanent GitHub Release
+
+For the first release, run:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag triggers the same workflow and creates a GitHub Release with the Windows installer attached. Users then open the repository's **Releases** page, choose the latest release, and download the `.exe` from **Assets**.
+
+Before a later release, update the version in `package.json`, `src-tauri\tauri.conf.json`, and `src-tauri\Cargo.toml`, commit the changes, then create and push a new matching tag such as `v0.1.1`.
+
+### Environment variables and secrets
+
+For the desktop build, add **no environment variables** to Vercel or GitHub. In particular, never create `NEXT_PUBLIC_OPENROUTER_API_KEY`: any `NEXT_PUBLIC_` value is embedded in browser JavaScript and can be read by other people.
+
+For local developer-only testing, you may copy `.env.example` to `.env` and set:
+
+```dotenv
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+SECOND_BRAIN_MODEL=openai/gpt-5.4-nano
+```
+
+Do not commit `.env`. The distributed installer does not contain this key; users add it in **Settings → AI**, where it is saved by Windows Credential Manager.
 
 ## Clean rebuild
 

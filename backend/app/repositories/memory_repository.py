@@ -100,6 +100,15 @@ class MemoryRepository:
         current = self.get(memory_id)
         allowed = {"title", "content", "memory_type", "category", "project_id", "importance_score", "status"}
         normalized = {key: value for key, value in changes.items() if key in allowed and value is not None}
+        if "project_id" in changes:
+            normalized["project_id"] = changes["project_id"]
+        if "category" in changes:
+            normalized["category"] = changes["category"]
+        if "content" in normalized:
+            # Manual edits are authoritative. Keep the displayed/searchable fact
+            # synchronized with the edited content while retaining the old
+            # snapshot in memory_versions.
+            normalized["normalized_fact"] = normalized["content"]
         if changes.get("tags") is not None:
             normalized["tags_json"] = json.dumps(changes["tags"])
         if not normalized:
@@ -114,7 +123,7 @@ class MemoryRepository:
             connection.execute(
                 f"UPDATE memories SET {assignments} WHERE id=?", (*normalized.values(), memory_id)
             )
-            if "title" in normalized or "content" in normalized or "tags_json" in normalized:
+            if {"title", "content", "normalized_fact", "tags_json"} & normalized.keys():
                 connection.execute("DELETE FROM memories_fts WHERE memory_id=?", (memory_id,))
                 refreshed = connection.execute("SELECT * FROM memories WHERE id=?", (memory_id,)).fetchone()
                 connection.execute(
@@ -126,4 +135,3 @@ class MemoryRepository:
 
     def delete(self, memory_id: str) -> None:
         self.patch(memory_id, {"status": "deleted"})
-

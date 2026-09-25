@@ -39,33 +39,35 @@ class RetrievalService:
                     key = ("memory", row["id"])
                     ranks[key] += 1 / (60 + rank)
                     results[key] = self._memory_result(row)
-                chunk_rows = connection.execute(
-                    """SELECT c.*, f.filename, f.title file_title, bm25(chunks_fts) rank
-                    FROM chunks_fts JOIN document_chunks c ON c.id=chunks_fts.chunk_id
-                    JOIN files f ON f.id=c.file_id WHERE chunks_fts MATCH ?
-                    ORDER BY rank LIMIT 30""", (fts,),
+                if not project_id:
+                    chunk_rows = connection.execute(
+                        """SELECT c.*, f.filename, f.title file_title, bm25(chunks_fts) rank
+                        FROM chunks_fts JOIN document_chunks c ON c.id=chunks_fts.chunk_id
+                        JOIN files f ON f.id=c.file_id WHERE chunks_fts MATCH ?
+                        ORDER BY rank LIMIT 30""", (fts,),
+                    ).fetchall()
+                    for rank, row in enumerate(chunk_rows, 1):
+                        key = ("chunk", row["id"])
+                        ranks[key] += 1 / (60 + rank)
+                        results[key] = self._chunk_result(row)
+
+            if not project_id:
+                query_vector = self.embeddings.embed([query])[0]
+                vector_rows = connection.execute(
+                    """SELECT c.*, f.filename, f.title file_title FROM document_chunks c
+                    JOIN files f ON f.id=c.file_id WHERE c.embedding IS NOT NULL"""
                 ).fetchall()
-                for rank, row in enumerate(chunk_rows, 1):
+                similarities = []
+                for row in vector_rows:
+                    vector = self.embeddings.deserialize(row["embedding"], row["embedding_dim"])
+                    similarities.append((self.embeddings.cosine(query_vector, vector), row))
+                for rank, (similarity, row) in enumerate(sorted(similarities, key=lambda pair: pair[0], reverse=True)[:30], 1):
+                    if similarity <= 0:
+                        continue
                     key = ("chunk", row["id"])
                     ranks[key] += 1 / (60 + rank)
-                    results[key] = self._chunk_result(row)
-
-            query_vector = self.embeddings.embed([query])[0]
-            vector_rows = connection.execute(
-                """SELECT c.*, f.filename, f.title file_title FROM document_chunks c
-                JOIN files f ON f.id=c.file_id WHERE c.embedding IS NOT NULL"""
-            ).fetchall()
-            similarities = []
-            for row in vector_rows:
-                vector = self.embeddings.deserialize(row["embedding"], row["embedding_dim"])
-                similarities.append((self.embeddings.cosine(query_vector, vector), row))
-            for rank, (similarity, row) in enumerate(sorted(similarities, key=lambda pair: pair[0], reverse=True)[:30], 1):
-                if similarity <= 0:
-                    continue
-                key = ("chunk", row["id"])
-                ranks[key] += 1 / (60 + rank)
-                results.setdefault(key, self._chunk_result(row))
-                results[key]["semantic_score"] = similarity
+                    results.setdefault(key, self._chunk_result(row))
+                    results[key]["semantic_score"] = similarity
 
         ranked = []
         for key, item in results.items():
@@ -92,4 +94,3 @@ class RetrievalService:
             "status": "current", "importance_score": 0.5, "file_id": row["file_id"],
             "metadata": {"filename": row["filename"], "chunk_number": row["chunk_number"]},
         }
-

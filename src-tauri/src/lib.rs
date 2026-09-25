@@ -19,6 +19,17 @@ fn reveal(app: &tauri::AppHandle, label: &str) {
     }
 }
 
+fn toggle(app: &tauri::AppHandle, label: &str) {
+    if let Some(window) = app.get_webview_window(label) {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
+
 pub fn run() {
     let quick_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::Space);
     let capture_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyM);
@@ -35,8 +46,8 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, shortcut, event| {
                     if event.state() != ShortcutState::Pressed { return; }
-                    if shortcut == &quick_handler { reveal(app, "quick"); }
-                    if shortcut == &capture_handler { reveal(app, "capture"); }
+                    if shortcut == &quick_handler { toggle(app, "quick"); }
+                    if shortcut == &capture_handler { toggle(app, "capture"); }
                 })
                 .build(),
         )
@@ -78,6 +89,11 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+            if let WindowEvent::Focused(false) = event {
+                if window.label() == "quick" || window.label() == "capture" {
                     let _ = window.hide();
                 }
             }

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import tempfile
 from functools import lru_cache
 from pathlib import Path
+
+from app.core.config import get_settings
 
 
 class VoiceService:
@@ -14,9 +15,22 @@ class VoiceService:
             if self._whisper is None:
                 from faster_whisper import WhisperModel
 
-                self._whisper = WhisperModel("base.en", device="cpu", compute_type="int8")
+                settings = get_settings()
+                bundled = settings.resource_dir / "models" / "faster-whisper-tiny.en"
+                model = str(bundled) if bundled.exists() else "tiny.en"
+                download_root = settings.data_dir / "models" / "whisper"
+                download_root.mkdir(parents=True, exist_ok=True)
+                self._whisper = WhisperModel(
+                    model,
+                    device="cpu",
+                    compute_type="int8",
+                    download_root=str(download_root),
+                )
             segments, _ = self._whisper.transcribe(str(audio_path), vad_filter=True)
-            return " ".join(segment.text.strip() for segment in segments).strip()
+            transcript = " ".join(segment.text.strip() for segment in segments).strip()
+            if not transcript:
+                raise RuntimeError("No speech was detected. Try speaking closer to the microphone.")
+            return transcript
         except ImportError as exc:
             raise RuntimeError("Local speech recognition is not installed in this build") from exc
 
@@ -27,6 +41,9 @@ class VoiceService:
             engine = pyttsx3.init()
             engine.save_to_file(text, str(output))
             engine.runAndWait()
+            engine.stop()
+            if not output.exists() or output.stat().st_size == 0:
+                raise RuntimeError("Windows text-to-speech did not produce audio")
             return output
         except ImportError as exc:
             raise RuntimeError("Local text-to-speech is not installed in this build") from exc
@@ -35,4 +52,3 @@ class VoiceService:
 @lru_cache
 def get_voice_service() -> VoiceService:
     return VoiceService()
-

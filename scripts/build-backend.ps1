@@ -12,6 +12,8 @@ if (-not (Get-Command rustc -ErrorAction SilentlyContinue)) {
 
 New-Item -ItemType Directory -Force -Path $BinaryDir | Out-Null
 python -m pip install -r (Join-Path $Backend "requirements-full.txt")
+python (Join-Path $Root "scripts\download-voice-model.py")
+if ($LASTEXITCODE -ne 0) { throw "Voice model download failed." }
 python -m PyInstaller (Join-Path $Backend "second-brain-backend.spec") --noconfirm --clean --distpath (Join-Path $Backend "dist") --workpath (Join-Path $Backend "build")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed." }
 

@@ -34,7 +34,14 @@ def test_duplicate_confirms_existing_memory(database):
 def test_patch_creates_version(database):
     repository = MemoryRepository(database)
     memory = repository.create({"title": "A fact", "content": "old", "normalized_fact": "old"})
-    repository.patch(memory["id"], {"content": "new"})
+    updated = repository.patch(memory["id"], {"title": "Edited fact", "content": "new", "tags": ["edited"]})
+    assert updated["title"] == "Edited fact"
+    assert updated["content"] == "new"
+    assert updated["normalized_fact"] == "new"
+    assert updated["tags"] == ["edited"]
     with database.connect() as connection:
         assert connection.execute("SELECT COUNT(*) FROM memory_versions").fetchone()[0] == 1
-
+        indexed = connection.execute(
+            "SELECT normalized_fact FROM memories_fts WHERE memory_id=?", (memory["id"],)
+        ).fetchone()
+        assert indexed[0] == "new"

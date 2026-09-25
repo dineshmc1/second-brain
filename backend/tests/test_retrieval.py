@@ -28,3 +28,25 @@ def test_unknown_query_returns_no_personal_memory(database):
     results = RetrievalService(database).search("What is my favorite telescope?")
     assert results == []
 
+
+def test_project_search_excludes_other_projects(database):
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC).isoformat()
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO projects(id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)",
+            ("atlas", "Atlas", "", "#68e8ff", now, now),
+        )
+        connection.execute(
+            "INSERT INTO projects(id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)",
+            ("apollo", "Apollo", "", "#68e8ff", now, now),
+        )
+    memories = MemoryService(MemoryRepository(database))
+    atlas, _ = memories.remember(MemoryCreate(content="Remember that the launch color is cyan.", project_id="atlas"))
+    apollo, _ = memories.remember(MemoryCreate(content="Remember that the launch color is amber.", project_id="apollo"))
+
+    results = RetrievalService(database).search("What is the launch color?", project_id="atlas")
+
+    assert any(item["id"] == atlas["id"] for item in results)
+    assert all(item["id"] != apollo["id"] for item in results)

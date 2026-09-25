@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.config import get_settings
 from app.core.database import db
-from app.core.security import get_api_key, set_api_key
+from app.core.security import get_api_key, get_calendar_url, set_api_key, set_calendar_url
 from app.models.schemas import SettingUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -18,8 +18,12 @@ def read_settings():
         "model": get_settings().model, "top_k": 8, "vector_weight": 0.55,
         "keyword_weight": 0.45, "auto_memory": True, "ask_before_saving": False,
         "response_mode": "text", "animations": True, "close_to_tray": True,
+        "ai_depth": "quick", "ai_cache": True, "daily_ai_budget": 12,
     }
-    return {**defaults, **values, "has_api_key": bool(get_api_key())}
+    return {
+        **defaults, **values, "has_api_key": bool(get_api_key()),
+        "has_calendar": bool(get_calendar_url()),
+    }
 
 
 @router.put("")
@@ -27,6 +31,11 @@ def update_settings(payload: SettingUpdate):
     if payload.api_key is not None:
         try:
             set_api_key(payload.api_key or None)
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc))
+    if payload.calendar_url is not None:
+        try:
+            set_calendar_url(payload.calendar_url or None)
         except RuntimeError as exc:
             raise HTTPException(503, str(exc))
     with db.transaction() as connection:
@@ -39,4 +48,3 @@ def update_settings(payload: SettingUpdate):
                 (key, json.dumps(value)),
             )
     return read_settings()
-

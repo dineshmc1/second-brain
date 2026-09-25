@@ -137,7 +137,69 @@ class ProjectCreate(BaseModel):
     color: str = "#68e8ff"
 
 
+class ProjectPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = None
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    goal: str | None = None
+    status: Literal["active", "paused", "completed", "archived"] | None = None
+
+
+class InboxCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=30_000)
+    source_type: str = "capture"
+
+
+class InboxProcess(BaseModel):
+    action: Literal["memory", "task", "project", "archive", "discard"]
+    project_id: str | None = None
+
+
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=240)
+    description: str = ""
+    status: Literal["backlog", "next", "in_progress", "blocked", "done"] = "backlog"
+    priority: Literal["low", "medium", "high", "critical"] = "medium"
+    due_at: datetime | None = None
+    project_id: str | None = None
+    parent_task_id: str | None = None
+
+
+class TaskPatch(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=240)
+    description: str | None = None
+    status: Literal["backlog", "next", "in_progress", "blocked", "done"] | None = None
+    priority: Literal["low", "medium", "high", "critical"] | None = None
+    due_at: datetime | None = None
+    project_id: str | None = None
+    position: int | None = Field(default=None, ge=0)
+
+
+class TaskBreakdown(BaseModel):
+    title: str = Field(min_length=1, max_length=2000)
+    project_id: str | None = None
+
+
+class LearningGoalCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    objective: str = Field(min_length=1, max_length=4000)
+    target_date: datetime | None = None
+
+
+class LearningNodePatch(BaseModel):
+    status: Literal["locked", "ready", "learning", "mastered"] | None = None
+    mastery: float | None = Field(default=None, ge=0, le=100)
+
+
+class LearningRun(BaseModel):
+    mode: Literal["accelerate", "explain", "misconception", "compress", "transfer", "simulate", "experts", "communication"]
+    input: str = Field(min_length=1, max_length=30_000)
+    goal_id: str | None = None
+    node_id: str | None = None
+    depth: Literal["quick", "standard", "deep"] = "standard"
+
+
 class SettingUpdate(BaseModel):
     values: dict[str, Any] = Field(default_factory=dict)
     api_key: str | None = None
-
+    calendar_url: str | None = None

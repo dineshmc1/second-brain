@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import shutil
 import tempfile
 import zipfile
@@ -14,23 +15,33 @@ from app.core.database import db
 router = APIRouter(prefix="/data", tags=["data"])
 
 
-@router.post("/export")
+@router.api_route("/export", methods=["GET", "POST"])
 def export_data():
     settings = get_settings()
     timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     archive = settings.exports_dir / f"second-brain-export-{timestamp}.zip"
-    with db.connect() as connection:
+    database_snapshot = settings.exports_dir / f"database-{timestamp}.sqlite3"
+    connection = db.connect()
+    try:
         memories = [dict(row) for row in connection.execute("SELECT * FROM memories")]
         files = [dict(row) for row in connection.execute("SELECT id,filename,title,mime_type,imported_at,status FROM files")]
+        destination = sqlite3.connect(database_snapshot)
+        try:
+            connection.backup(destination)
+        finally:
+            destination.close()
+    finally:
+        connection.close()
     json_path = settings.exports_dir / f"metadata-{timestamp}.json"
     json_path.write_text(json.dumps({"memories": memories, "files": files}, indent=2), encoding="utf-8")
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-        bundle.write(settings.database_path, "second_brain.sqlite3")
+        bundle.write(database_snapshot, "second_brain.sqlite3")
         bundle.write(json_path, "metadata.json")
         for path in settings.uploads_dir.glob("*"):
             if path.is_file():
                 bundle.write(path, f"uploads/{path.name}")
     json_path.unlink(missing_ok=True)
+    database_snapshot.unlink(missing_ok=True)
     return FileResponse(archive, media_type="application/zip", filename=archive.name)
 
 
@@ -61,4 +72,3 @@ def import_data(file: UploadFile = File(...)):
             return {"imported": True, "backup": str(backup) if backup.exists() else None}
         except Exception as exc:
             raise HTTPException(422, f"Import failed: {exc}")
-
